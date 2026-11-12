@@ -1,0 +1,1 @@
+import postgres from"postgres";import{readFile}from"node:fs/promises";const url=process.env.DATABASE_URL;if(!url)throw new Error("DATABASE_URL required");const c=postgres(url,{max:1});try{const m=await readFile("drizzle/0001_initial.sql","utf8");await c.begin(async tx=>{await tx.unsafe(m)});console.log("Migration 0001 applied")}finally{await c.end()}

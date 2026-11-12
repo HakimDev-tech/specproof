@@ -1,0 +1,1 @@
+import{scenarios}from"./scenarios";export async function listSuites(){return[{id:"specproof-core-v1",slug:"specproof-core",name:"Developer Agent Reliability",description:"Version-aware API, migration and documentation research.",version:"1.0.0",category:"Developer research agents",taskCount:scenarios.length}]}

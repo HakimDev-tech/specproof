@@ -1,0 +1,1 @@
+import{NextResponse}from"next/server";import{listSuites}from"@/modules/benchmark/application/suites";import{scenarios}from"@/modules/benchmark/application/scenarios";export async function GET(){return NextResponse.json({data:await listSuites(),scenarios:scenarios.map(({key,title,category,targetVersion})=>({key,title,category,targetVersion}))})}
