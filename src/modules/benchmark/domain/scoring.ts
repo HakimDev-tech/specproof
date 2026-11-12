@@ -96,6 +96,7 @@ export function scoreSourceFreshness(
 ) {
   if (!evidence.length) return { score: 0, datedSources: 0, versionMatches: 0, sourceCount: 0 };
   const normalizedTarget = targetVersion.toLowerCase().replace(/\s+/g, " ").trim();
+  const versionCandidates = normalizedTarget.split(/\s+vs\.?\s+/i).map((value) => value.trim()).filter(Boolean);
   let datedSources = 0;
   let versionMatches = 0;
   const scores = evidence.map((item) => {
