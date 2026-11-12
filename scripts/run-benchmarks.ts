@@ -36,10 +36,10 @@ async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
 type CreatedRun = {
   data: { id: string; status: string; total_tasks: number };
 };
-type RunDetails = { data: Record<string, unknown> & { attempts: Array<Record<string, unknown>> } };
+type RunDetails = { data: { model: string; status: string; aggregate_score: number | null; attempts: Array<Record<string, unknown>> } };
 
 async function executeMode(mode: "baseline" | "research") {
-  console.log(`\\n=== ${mode.toUpperCase()} · ${scenarios.length} scenarios ===`);
+  console.log(`\n=== ${mode.toUpperCase()} · ${scenarios.length} scenarios ===`);
   const created = await api<CreatedRun>("/api/runs", {
     method: "POST",
     body: JSON.stringify({
@@ -96,7 +96,7 @@ async function main() {
   console.log(`SPECProof benchmark target: ${baseUrl}`);
   const baseline = await executeMode("baseline");
   const research = await executeMode("research");
-  console.log("\\n=== FINAL SUMMARY ===");
+  console.log("\n=== FINAL SUMMARY ===");
   console.log(JSON.stringify({
     baseline: { runId: baseline.runId, status: baseline.status, completed: baseline.completed, failed: baseline.failed },
     research: { runId: research.runId, status: research.status, completed: research.completed, failed: research.failed },
