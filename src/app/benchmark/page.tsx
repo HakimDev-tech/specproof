@@ -93,7 +93,7 @@ export default function BenchmarkConsole() {
       <header className="workbench-topbar">
         <a href="/" className="brand-lockup"><span className="brand-mark">S<span>/</span>P</span><span className="brand-name">SPEC<span>PROOF</span></span></a>
         <div className="breadcrumb"><a href="/">Workspace</a><span>/</span><b>Benchmark execution</b></div>
-        <div className="topbar-right"><span className="system-status"><i /> API OPERATIONAL</span><a href="/" className="topbar-cta">Exit console <span>↗</span></a></div>
+        <div className="topbar-right"><span className="system-status"><i /> PRODUCTION</span><a href="/" className="topbar-cta">Exit console <span>↗</span></a></div>
       </header>
 
       <div className="workbench-heading">
@@ -150,7 +150,7 @@ export default function BenchmarkConsole() {
             <div className="scenario-table">
               <div className="scenario-table-head"><span>KEY</span><span>SCENARIO</span><span>DOMAIN</span><span>STATUS</span></div>
               {scenarios.map(([key, title, category]) => (
-                <div className="scenario-table-row" key={key}><code>{key}</code><b>{title}</b><span>{category}</span><em>{progress > 0 ? "IN QUEUE" : "PENDING"}</em></div>
+                <div className="scenario-table-row" key={key}><code>{key}</code><b>{title}</b><span>{category}</span><em>IN SCOPE</em></div>
               ))}
             </div>
           </div>
