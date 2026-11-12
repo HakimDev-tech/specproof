@@ -1,15 +1,13 @@
 import { NextResponse } from "next/server";
 import { requireApiToken } from "@/lib/auth/api";
 import { sql } from "@/lib/db/client";
-import {
-  executeAgent,
-  verifyClaims,
-} from "@/modules/agent-runtime/openrouter";
+import { executeAgent, verifyClaims } from "@/modules/agent-runtime/openrouter";
 import { scenarios } from "@/modules/benchmark/application/scenarios";
 import {
   deterministicChecks,
   evaluateClaimEvidence,
   scoreAttempt,
+  scoreSourceFreshness,
 } from "@/modules/benchmark/domain/scoring";
 import { retrieveEvidence } from "@/modules/retrieval/tavily";
 
@@ -21,9 +19,7 @@ export async function POST(
 ) {
   const unauthorized = requireApiToken(request);
   if (unauthorized) return unauthorized;
-  if (!sql) {
-    return NextResponse.json({ error: "DATABASE_URL is not configured" }, { status: 503 });
-  }
+  if (!sql) return NextResponse.json({ error: "DATABASE_URL is not configured" }, { status: 503 });
 
   const { runId, taskKey } = await params;
   const scenario = scenarios.find((item) => item.key === taskKey);
@@ -44,12 +40,7 @@ export async function POST(
       AND task_key = ${taskKey}
     LIMIT 1
   `;
-  if (!task) {
-    return NextResponse.json(
-      { error: "Task not found in this run's benchmark suite" },
-      { status: 404 },
-    );
-  }
+  if (!task) return NextResponse.json({ error: "Task not found in this run's benchmark suite" }, { status: 404 });
 
   const mode = run.mode === "research" ? "research" : "baseline";
   const [attempt] = await sql`
@@ -62,75 +53,76 @@ export async function POST(
 
   try {
     await sql`DELETE FROM evidence_items WHERE attempt_id = ${attempt.id}`;
-    const evidence = mode === "research" ? await retrieveEvidence(scenario.prompt) : [];
-    const result = await executeAgent({ prompt: scenario.prompt, mode, evidence });
+
+    // Baseline receives no retrieved context. Its reference corpus is collected only after generation.
+    const researchEvidence = mode === "research" ? await retrieveEvidence(scenario.prompt) : [];
+    const result = await executeAgent({ prompt: scenario.prompt, mode, evidence: researchEvidence });
+
+    let evaluationEvidence = researchEvidence;
+    let evaluationCorpusStatus: "available" | "unavailable" = mode === "research" ? "available" : "unavailable";
+    if (mode === "baseline") {
+      try {
+        evaluationEvidence = await retrieveEvidence(scenario.prompt);
+        evaluationCorpusStatus = "available";
+      } catch {
+        // Preserve the completed baseline answer if post-hoc evaluator retrieval fails.
+        evaluationEvidence = [];
+      }
+    }
+
+    const isOfficial = (url: string) => scenario.expected.officialDomains.some((domain) => {
+      try {
+        const hostname = new URL(url).hostname.toLowerCase();
+        return hostname === domain || hostname.endsWith("." + domain);
+      } catch {
+        return false;
+      }
+    });
+    const officialEvidence = evaluationEvidence.filter((item) => isOfficial(item.url));
     const checks = deterministicChecks(
       result.answer,
       scenario.expected.requiredTerms,
       scenario.expected.forbiddenTerms ?? [],
     );
 
-    let claimVerification:
-      | ReturnType<typeof evaluateClaimEvidence>
-      | null = null;
-    let claimVerificationStatus: "completed" | "unavailable" | "not_applicable" =
-      mode === "research" ? "unavailable" : "not_applicable";
-
-    if (mode === "research" && evidence.length > 0) {
+    let claimVerification: ReturnType<typeof evaluateClaimEvidence> | null = null;
+    let claimVerificationStatus: "completed" | "unavailable" = "unavailable";
+    if (officialEvidence.length > 0) {
       try {
         const audit = await verifyClaims({
           question: scenario.prompt,
           answer: result.answer,
-          evidence,
+          evidence: officialEvidence,
         });
-        claimVerification = evaluateClaimEvidence(
-          audit.claims,
-          evidence.map((item) => item.url),
-        );
+        claimVerification = evaluateClaimEvidence(audit.claims, officialEvidence.map((item) => item.url));
         claimVerificationStatus = "completed";
       } catch {
         claimVerificationStatus = "unavailable";
       }
     }
 
-    const isOfficial = (url: string) =>
-      scenario.expected.officialDomains.some((domain) => {
-        try {
-          const hostname = new URL(url).hostname;
-          return hostname === domain || hostname.endsWith(`.${domain}`);
-        } catch {
-          return false;
-        }
-      });
+    const factualScore = claimVerificationStatus === "completed" && claimVerification
+      ? claimVerification.factualScore
+      : 0;
+    const evidenceScore = claimVerificationStatus === "completed" && claimVerification
+      ? claimVerification.score
+      : 0;
+    const freshness = scoreSourceFreshness(officialEvidence, scenario.targetVersion);
+    const abstained = /cannot verify|insufficient evidence|cannot determine|unable to verify|not enough evidence|no reliable source/i.test(result.answer);
 
-    const officialEvidence = evidence.filter((item) => isOfficial(item.url));
-    const citedOfficial = officialEvidence.filter((item) =>
-      result.answer.includes(item.url),
-    );
-    const citationScore = scenario.expected.officialDomains.length
-      ? officialEvidence.length
-        ? (citedOfficial.length / officialEvidence.length) * 100
-        : 0
-      : scenario.expected.mustAbstain
-        ? 100
-        : 0;
-
-    const evidenceScore =
-      mode === "baseline"
-        ? 0
-        : claimVerificationStatus === "completed" && claimVerification
-          ? claimVerification.score * 0.7 + citationScore * 0.3
-          : citationScore * 0.3;
-
-    const abstained =
-      /cannot verify|insufficient evidence|cannot determine|unable to verify|not enough evidence/i.test(
-        result.answer,
-      );
-
+    const noSourceAbstentionCase = scenario.expected.mustAbstain === true
+      && scenario.expected.officialDomains.length === 0;
+    const abstentionEvidenceScore = noSourceAbstentionCase
+      ? (abstained && !result.answer.includes("http://") && !result.answer.includes("https://") ? 100 : 0)
+      : evidenceScore;
     const metrics = scoreAttempt({
-      correctness: checks.score,
-      evidence: evidenceScore,
-      freshness: officialEvidence.length > 0 ? 50 : 0,
+      correctness: claimVerificationStatus === "completed"
+        ? checks.score * 0.35 + factualScore * 0.65
+        : noSourceAbstentionCase
+          ? checks.score * 0.35 + (abstained ? 100 : 0) * 0.65
+          : checks.score * 0.5,
+      evidence: abstentionEvidenceScore,
+      freshness: noSourceAbstentionCase ? 50 : freshness.score,
       completeness: checks.score,
       efficiency:
         result.latencyMs < 15_000 &&
@@ -148,13 +140,25 @@ export async function POST(
           claims = ${sql.json(persistedClaims)},
           metrics = ${sql.json({
             ...metrics,
+            evaluationMethod: "deterministic-coverage+evidence-audit-v2",
             claimVerificationStatus,
             totalClaims: claimVerification?.totalClaims ?? 0,
             supportedClaims: claimVerification?.supportedClaims ?? 0,
+            factuallySupportedClaims: claimVerification?.factuallySupportedClaims ?? 0,
             unsupportedClaims: claimVerification?.unsupportedClaims ?? 0,
             missingTerms: checks.missing.length,
             matchedTerms: checks.matched,
             forbiddenClaims: checks.violations.length,
+            freshness: {
+              score: freshness.score,
+              datedSources: freshness.datedSources,
+              versionMatches: freshness.versionMatches,
+              sourceCount: freshness.sourceCount,
+              targetVersion: scenario.targetVersion,
+            },
+            evaluationRetrieval: mode === "baseline",
+            evaluationCorpusStatus,
+            generationLatencyMs: result.latencyMs,
           })},
           score = ${metrics.total},
           latency_ms = ${result.latencyMs},
@@ -164,7 +168,7 @@ export async function POST(
       WHERE id = ${attempt.id}
     `;
 
-    for (const item of evidence) {
+    for (const item of evaluationEvidence) {
       await sql`
         INSERT INTO evidence_items(
           attempt_id, url, title, snippet, content_hash, published_at, is_official
@@ -183,15 +187,11 @@ export async function POST(
         count(*) FILTER (WHERE status = 'completed')::int AS completed,
         count(*) FILTER (WHERE status = 'failed')::int AS failed,
         count(*)::int AS attempted
-      FROM task_attempts
-      WHERE run_id = ${runId}
+      FROM task_attempts WHERE run_id = ${runId}
     `;
-
     const allAttempted = progress.attempted >= run.total_tasks;
     const finalStatus = allAttempted
-      ? progress.failed > 0
-        ? "partially_completed"
-        : "completed"
+      ? progress.failed > 0 ? "partially_completed" : "completed"
       : "running";
 
     await sql`
@@ -217,7 +217,10 @@ export async function POST(
         claimVerification,
         claimVerificationStatus,
         score: metrics,
-        evidenceCount: evidence.length,
+        freshness,
+        evidenceCount: evaluationEvidence.length,
+        evaluationRetrieval: mode === "baseline",
+        evaluationCorpusStatus,
         progress: {
           completed: progress.completed,
           failed: progress.failed,
@@ -226,8 +229,7 @@ export async function POST(
       },
     });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown execution error";
+    const message = error instanceof Error ? error.message : "Unknown execution error";
     await sql`
       UPDATE task_attempts
       SET status = 'failed', error = ${message}, completed_at = now()
@@ -238,8 +240,7 @@ export async function POST(
         count(*) FILTER (WHERE status = 'completed')::int AS completed,
         count(*) FILTER (WHERE status = 'failed')::int AS failed,
         count(*)::int AS attempted
-      FROM task_attempts
-      WHERE run_id = ${runId}
+      FROM task_attempts WHERE run_id = ${runId}
     `;
     const allAttempted = progress.attempted >= run.total_tasks;
     await sql`
@@ -249,9 +250,6 @@ export async function POST(
           completed_at = CASE WHEN ${allAttempted} THEN now() ELSE NULL END
       WHERE id = ${runId}
     `;
-    return NextResponse.json(
-      { error: message, attemptId: attempt.id },
-      { status: 502 },
-    );
+    return NextResponse.json({ error: message, attemptId: attempt.id }, { status: 502 });
   }
 }

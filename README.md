@@ -8,7 +8,7 @@ Requirements: Node.js 22 LTS and npm.
 
 1. Install dependencies: `npm install`.
 2. For local development, link the Vercel project and pull its development-only environment: `npx vercel link --project specproof`, then `npx vercel env pull .env.local --environment=development`. This uses a separate Neon development branch. Add your OpenRouter and Tavily credentials to the local `.env.local` file; production/preview Secret values are intentionally not retrievable by `vercel env pull`. Alternatively, copy `.env.example` to `.env.local` and fill all values manually.
-3. Set `DATABASE_URL`, `OPENROUTER_BASE_URL` (normally `https://openrouter.ai/api/v1`), `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`, `TAVILY_API_KEY`, and a random `SPECPROOF_API_TOKEN` of at least 32 characters. `OPENROUTER_SITE_URL` is optional and used as OpenRouter attribution metadata.
+3. Set `DATABASE_URL`, `OPENROUTER_BASE_URL` (normally `https://openrouter.ai/api/v1`), `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`, `TAVILY_API_KEY`, and a random `SPECPROOF_API_TOKEN` of at least 32 characters. `OPENROUTER_EVALUATOR_MODEL` is optional and should identify a different model for claim auditing. `OPENROUTER_SITE_URL` is optional and used as OpenRouter attribution metadata.
 4. Apply the schema: `npm run db:migrate`.
 5. Run checks: `npm run typecheck && npm test && npm run build`.
 6. Start locally: `npm run dev`.
@@ -41,3 +41,4 @@ Freshness is not inferred from retrieval time. Sources without a verifiable publ
 ## CI
 
 GitHub Actions runs TypeScript checks, unit tests, and a production build on Node.js 22 for pushes and pull requests to `main`.
+\n\n## Result interpretation\n\nDo not compare only run-level averages. Inspect paired per-task scores, dimension breakdowns, failed tasks, source dates and claim-level evidence. The benchmark console exports persisted run summaries as JSON. A single 12-task run is exploratory; publication-grade claims require multiple repetitions, human-annotated gold answers, an independent evaluator and version-pinned source snapshots.\n
