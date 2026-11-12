@@ -151,7 +151,7 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 5px; }
 .console-status { margin: 14px 0; font-size: 11px; font-weight: 700; }
 .progress-track { height: 4px; background: var(--paper-deep); }
 .progress-track span { display: block; height: 100%; background: var(--accent); transition: width .25s ease; }
-.console-log { max-height: 330px; overflow: auto; padding: 14px 16px; border: 1px solid var(--rule); background: rgba(255,255,255,.2); font: 10px/1.8 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.console-log { max-height: 330px; overflow: auto; padding: 14px 16px; border: 1px solid var(--rule); background: rgba(255,255,255,.2); font: 10px/1.8 var(--text); letter-spacing: .015em; }
 .console-log p { margin: 0; overflow-wrap: anywhere; }
 .console-log p + p { border-top: 1px solid rgba(32,33,29,.08); }
 .console-error { color: #9e2c1c; font-size: 12px; }
