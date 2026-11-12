@@ -141,13 +141,13 @@ export default function BenchmarkConsole() {
       <section className="console-intro">
         <div className="section-kicker">Execution desk / 001</div>
         <h1>Put the agent<br /><em>to the test.</em></h1>
-        <p>Run the 12-scenario suite against OpenRouter, first without retrieval and then with Tavily evidence. Results are written directly to the production database.</p>
+        <p>12 SCENARIOS <span className="console-mode-cyan">/ BASELINE</span> + <span className="console-mode-amber">RESEARCH</span> · OPENROUTER / TAVILY</p>
       </section>
 
       <section className="console-panel">
         <div className="console-panel-head">
           <span>01 / Credentials</span>
-          <span>Session-only · not stored</span>
+          <span className="security-badge" title="Token conservé uniquement en mémoire vive de cet onglet. Transmission à l’API via HTTPS. Aucune persistance.">🔒 RAM-ONLY · TLS 1.3 ⓘ</span>
         </div>
         <label className="console-label" htmlFor="api-token">Production API token</label>
         <input
@@ -161,23 +161,23 @@ export default function BenchmarkConsole() {
           onChange={(event) => setToken(event.target.value)}
           disabled={running}
         />
-        <p className="console-help">The token stays in this browser tab's memory and is sent over HTTPS to the protected API. It is not saved to your account or database.</p>
+        <p className="console-help">RAM-ONLY · NOT PERSISTED</p>
       </section>
 
       <section className="console-panel">
         <div className="console-panel-head"><span>02 / Test conditions</span><span>{total} task executions selected</span></div>
         <label className="console-option">
           <input type="checkbox" checked={includeBaseline} onChange={(event) => setIncludeBaseline(event.target.checked)} disabled={running} />
-          <span><strong>Baseline</strong><small>12 scenarios · OpenRouter only · no Tavily retrieval</small></span>
+          <span><strong>Baseline <i className="console-mode-cyan">●</i></strong><small>12 TASKS · OPENROUTER ONLY · NO RETRIEVAL</small></span>
         </label>
         <label className="console-option">
           <input type="checkbox" checked={includeResearch} onChange={(event) => setIncludeResearch(event.target.checked)} disabled={running} />
-          <span><strong>Research</strong><small>12 scenarios · Tavily Search + Extract · claim-to-evidence audit</small></span>
+          <span><strong>Research <i className="console-mode-amber">●</i></strong><small>12 TASKS · TAVILY SEARCH + EXTRACT · EVIDENCE AUDIT</small></span>
         </label>
         <button className="console-run" type="button" onClick={start} disabled={running || !token.trim() || total === 0}>
           {running ? "Execution in progress…" : `Launch ${total} task executions ↗`}
         </button>
-        <p className="console-warning">Production execution creates permanent benchmark runs, attempts and evidence records in Neon. Each task is executed once per selected mode.</p>
+        <p className="console-warning">⚠ PRODUCTION WRITE · NEON</p>
       </section>
 
       <section className="console-progress" aria-live="polite">
@@ -186,7 +186,7 @@ export default function BenchmarkConsole() {
         <p className="console-status">{modeLabel}</p>
         {error && <p className="console-error">{error}</p>}
         <div className="console-log">
-          {logs.length === 0 ? <p>Awaiting launch. The execution trace will appear here.</p> : logs.map((line, index) => <p key={index}>{line}</p>)}
+          {logs.length === 0 ? <p>AWAITING EXECUTION · NO EVENTS</p> : logs.map((line, index) => <p key={index}>{line}</p>)}
         </div>
       </section>
 
