@@ -44,7 +44,7 @@ The application is a modular monolith. The agent runtime, retrieval adapter, ben
 
 Requirements: Node.js 22 LTS and npm.
 
-1. Install dependencies: `npm ci`.
+1. Install dependencies: `npm install`. The repository currently does not include a lockfile, so CI uses npm's dependency resolution rather than a reproducible lockfile install.
 2. Configure the environment variables listed in [`.env.example`](.env.example).
 3. Set `DATABASE_URL` to the intended Neon branch. Use a dedicated non-production branch for preview experiments.
 4. Set `OPENROUTER_BASE_URL` (normally `https://openrouter.ai/api/v1`), `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`, `TAVILY_API_KEY`, and a random `SPECPROOF_API_TOKEN` of at least 32 characters.
