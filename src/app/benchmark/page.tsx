@@ -49,8 +49,13 @@ export default function BenchmarkConsole(){
       catch(e){failed++;setStates(old=>({...old,[key]:"failed"}));log(key+" failed · "+(e instanceof Error?e.message:String(e)),"error");}
       setProgress(v=>v+1);
     }
-    const details=await api<{data:{status:string;aggregate_score:number|null}}>("/api/runs/"+id);
-    const summary={mode,id,status:details.data.status,completed,failed,score:details.data.aggregate_score};setRuns(old=>[...old,summary]);log("Run finalized · "+completed+"/12 completed · "+failed+" failed","success");
+    const details=await api<{data:{status:string;aggregate_score:number|null;attempts:Array<{metrics:Record<string,unknown>|null}>}}>("/api/runs/"+id);
+    const dimensionKeys=["correctness","evidence","freshness","completeness","efficiency","uncertainty"];
+    const dimensions=Object.fromEntries(dimensionKeys.map(key=>{
+      const values=details.data.attempts.map(item=>Number(item.metrics?.[key])).filter(value=>Number.isFinite(value));
+      return [key,values.length?Number((values.reduce((sum,value)=>sum+value,0)/values.length).toFixed(1)):0];
+    }));
+    const summary={mode,id,status:details.data.status,completed,failed,score:details.data.aggregate_score,dimensions};setRuns(old=>[...old,summary]);log("Run finalized · "+completed+"/12 completed · "+failed+" failed","success");
   }
   async function start(){
     if(!token.trim()||running||!total)return;
