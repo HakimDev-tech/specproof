@@ -40,6 +40,7 @@ function getOpenRouterConfig() {
 async function completion(
   messages: Array<{ role: "system" | "user"; content: string }>,
   temperature = 0,
+  modelOverride?: string,
 ): Promise<ChatCompletionResponse> {
   const { baseURL, apiKey, model } = getOpenRouterConfig();
   const response = await fetch(`${baseURL}/chat/completions`, {
@@ -50,7 +51,7 @@ async function completion(
       "HTTP-Referer": process.env.OPENROUTER_SITE_URL ?? "https://specproof-nine.vercel.app",
       "X-Title": "SPECProof",
     },
-    body: JSON.stringify({ model, temperature, messages }),
+    body: JSON.stringify({ model: modelOverride || model, temperature, messages }),
     signal: AbortSignal.timeout(45_000),
     cache: "no-store",
   });
@@ -143,7 +144,7 @@ export async function verifyClaims(input: {
         evidence,
       }),
     },
-  ]);
+  ], 0, process.env.OPENROUTER_EVALUATOR_MODEL);
 
   const raw = result.choices?.[0]?.message?.content ?? "";
   const cleaned = raw.replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
