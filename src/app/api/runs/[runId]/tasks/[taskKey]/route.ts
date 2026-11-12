@@ -54,11 +54,21 @@ export async function POST(
   try {
     await sql`DELETE FROM evidence_items WHERE attempt_id = ${attempt.id}`;
 
-    // Baseline receives no retrieved context. The evaluator retrieves the same reference corpus
-    // only after generation, so evidence auditing is comparable without contaminating the agent.
+    // Baseline receives no retrieved context. Its reference corpus is collected only after generation.
     const researchEvidence = mode === "research" ? await retrieveEvidence(scenario.prompt) : [];
     const result = await executeAgent({ prompt: scenario.prompt, mode, evidence: researchEvidence });
-    const evaluationEvidence = mode === "research" ? researchEvidence : await retrieveEvidence(scenario.prompt);
+
+    let evaluationEvidence = researchEvidence;
+    let evaluationCorpusStatus: "available" | "unavailable" = mode === "research" ? "available" : "unavailable";
+    if (mode === "baseline") {
+      try {
+        evaluationEvidence = await retrieveEvidence(scenario.prompt);
+        evaluationCorpusStatus = "available";
+      } catch {
+        // Preserve the completed baseline answer if post-hoc evaluator retrieval fails.
+        evaluationEvidence = [];
+      }
+    }
 
     const isOfficial = (url: string) => scenario.expected.officialDomains.some((domain) => {
       try {
@@ -69,7 +79,6 @@ export async function POST(
       }
     });
     const officialEvidence = evaluationEvidence.filter((item) => isOfficial(item.url));
-
     const checks = deterministicChecks(
       result.answer,
       scenario.expected.requiredTerms,
@@ -77,7 +86,7 @@ export async function POST(
     );
 
     let claimVerification: ReturnType<typeof evaluateClaimEvidence> | null = null;
-    let claimVerificationStatus: "completed" | "unavailable" | "not_applicable" = "unavailable";
+    let claimVerificationStatus: "completed" | "unavailable" = "unavailable";
     if (officialEvidence.length > 0) {
       try {
         const audit = await verifyClaims({
@@ -85,35 +94,26 @@ export async function POST(
           answer: result.answer,
           evidence: officialEvidence,
         });
-        claimVerification = evaluateClaimEvidence(
-          audit.claims,
-          officialEvidence.map((item) => item.url),
-        );
+        claimVerification = evaluateClaimEvidence(audit.claims, officialEvidence.map((item) => item.url));
         claimVerificationStatus = "completed";
       } catch {
         claimVerificationStatus = "unavailable";
       }
     }
 
-    const claimScore = claimVerificationStatus === "completed" && claimVerification
+    const factualScore = claimVerificationStatus === "completed" && claimVerification
+      ? claimVerification.factualScore
+      : 0;
+    const evidenceScore = claimVerificationStatus === "completed" && claimVerification
       ? claimVerification.score
       : 0;
-    const citationScore = claimVerification?.totalClaims
-      ? (claimVerification.supportedClaims / claimVerification.totalClaims) * 100
-      : 0;
-    const freshness = scoreSourceFreshness(
-      officialEvidence,
-      scenario.targetVersion,
-    );
-
+    const freshness = scoreSourceFreshness(officialEvidence, scenario.targetVersion);
     const abstained = /cannot verify|insufficient evidence|cannot determine|unable to verify|not enough evidence|no reliable source/i.test(result.answer);
-    const correctness = claimVerificationStatus === "completed"
-      ? checks.score * 0.35 + factualScore * 0.65
-      : checks.score * 0.5;
-    const evidenceScore = claimVerificationStatus === "completed" ? citationScore : 0;
 
     const metrics = scoreAttempt({
-      correctness,
+      correctness: claimVerificationStatus === "completed"
+        ? checks.score * 0.35 + factualScore * 0.65
+        : checks.score * 0.5,
       evidence: evidenceScore,
       freshness: freshness.score,
       completeness: checks.score,
@@ -137,6 +137,7 @@ export async function POST(
             claimVerificationStatus,
             totalClaims: claimVerification?.totalClaims ?? 0,
             supportedClaims: claimVerification?.supportedClaims ?? 0,
+            factuallySupportedClaims: claimVerification?.factuallySupportedClaims ?? 0,
             unsupportedClaims: claimVerification?.unsupportedClaims ?? 0,
             missingTerms: checks.missing.length,
             matchedTerms: checks.matched,
@@ -149,6 +150,7 @@ export async function POST(
               targetVersion: scenario.targetVersion,
             },
             evaluationRetrieval: mode === "baseline",
+            evaluationCorpusStatus,
             generationLatencyMs: result.latencyMs,
           })},
           score = ${metrics.total},
@@ -211,6 +213,7 @@ export async function POST(
         freshness,
         evidenceCount: evaluationEvidence.length,
         evaluationRetrieval: mode === "baseline",
+        evaluationCorpusStatus,
         progress: {
           completed: progress.completed,
           failed: progress.failed,
