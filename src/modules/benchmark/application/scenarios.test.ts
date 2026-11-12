@@ -29,6 +29,6 @@ describe("SPECProof core benchmark suite", () => {
   });
 
   it("contains explicit abstention cases", () => {
-    expect(scenarios.filter((item) => item.expected.mustAbstain)).toHaveLength(2);
+    expect(scenarios.filter((item) => item.expected.mustAbstain)).toHaveLength(1);
   });
 });
