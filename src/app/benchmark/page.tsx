@@ -1,4 +1,6 @@
 "use client";
+
+import "./benchmark-polish.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 const scenarios = [
