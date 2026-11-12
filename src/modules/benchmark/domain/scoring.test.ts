@@ -49,6 +49,19 @@ describe("benchmark scoring", () => {
     expect(result.score).toBe(100);
   });
 
+  it("separates factual support from citation traceability", () => {
+    const result = evaluateClaimEvidence([{
+      claim: "The API accepts an options object",
+      supported: true,
+      sourceUrls: [],
+      rationale: "The excerpt supports the claim but the answer omitted a citation",
+    }], ["https://official.example/docs"]);
+    expect(result.factualScore).toBe(100);
+    expect(result.score).toBe(0);
+    expect(result.claims[0]?.factuallySupported).toBe(true);
+    expect(result.claims[0]?.supported).toBe(false);
+  });
+
   it("does not call undated documentation fresh", () => {
     const result = scoreSourceFreshness([{
       url: "https://react.dev/reference/react/forwardRef",
