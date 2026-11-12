@@ -110,12 +110,19 @@ export async function POST(
     const freshness = scoreSourceFreshness(officialEvidence, scenario.targetVersion);
     const abstained = /cannot verify|insufficient evidence|cannot determine|unable to verify|not enough evidence|no reliable source/i.test(result.answer);
 
+    const noSourceAbstentionCase = scenario.expected.mustAbstain === true
+      && scenario.expected.officialDomains.length === 0;
+    const abstentionEvidenceScore = noSourceAbstentionCase
+      ? (abstained && !/https?:\\/\\//i.test(result.answer) ? 100 : 0)
+      : evidenceScore;
     const metrics = scoreAttempt({
       correctness: claimVerificationStatus === "completed"
         ? checks.score * 0.35 + factualScore * 0.65
-        : checks.score * 0.5,
-      evidence: evidenceScore,
-      freshness: freshness.score,
+        : noSourceAbstentionCase
+          ? checks.score * 0.35 + (abstained ? 100 : 0) * 0.65
+          : checks.score * 0.5,
+      evidence: abstentionEvidenceScore,
+      freshness: noSourceAbstentionCase ? 50 : freshness.score,
       completeness: checks.score,
       efficiency:
         result.latencyMs < 15_000 &&
