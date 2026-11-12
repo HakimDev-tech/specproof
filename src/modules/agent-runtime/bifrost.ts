@@ -6,6 +6,8 @@ export interface AgentEvidence {
   title: string;
   snippet: string;
   score?: number;
+  publishedAt?: string;
+  contentHash?: string;
 }
 
 interface ChatCompletionResponse {

@@ -166,8 +166,15 @@ export async function POST(
 
     for (const item of evidence) {
       await sql`
-        INSERT INTO evidence_items(attempt_id, url, title, snippet, is_official)
-        VALUES (${attempt.id}, ${item.url}, ${item.title}, ${item.snippet}, ${isOfficial(item.url)})
+        INSERT INTO evidence_items(
+          attempt_id, url, title, snippet, content_hash, published_at, is_official
+        )
+        VALUES (
+          ${attempt.id}, ${item.url}, ${item.title}, ${item.snippet},
+          ${item.contentHash ?? null},
+          ${item.publishedAt && !Number.isNaN(Date.parse(item.publishedAt)) ? new Date(item.publishedAt) : null},
+          ${isOfficial(item.url)}
+        )
       `;
     }
 

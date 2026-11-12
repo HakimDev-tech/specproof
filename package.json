@@ -14,7 +14,7 @@
     "db:migrate": "tsx scripts/migrate.ts"
   },
   "dependencies": {
-    "@tavily/core": "^0.5.11",
+    "@tavily/core": "1.0.0",
     "drizzle-orm": "^0.44.7",
     "next": "15.5.29",
     "postgres": "^3.4.7",
