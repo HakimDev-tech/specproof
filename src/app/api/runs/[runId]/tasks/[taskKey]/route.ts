@@ -108,7 +108,7 @@ export async function POST(
 
     const abstained = /cannot verify|insufficient evidence|cannot determine|unable to verify|not enough evidence|no reliable source/i.test(result.answer);
     const correctness = claimVerificationStatus === "completed"
-      ? checks.score * 0.35 + claimScore * 0.65
+      ? checks.score * 0.35 + factualScore * 0.65
       : checks.score * 0.5;
     const evidenceScore = claimVerificationStatus === "completed" ? citationScore : 0;
 
