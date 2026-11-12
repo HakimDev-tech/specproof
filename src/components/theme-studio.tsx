@@ -53,7 +53,7 @@ export default function ThemeStudio() {
       {open && <section id="theme-popover" className="theme-popover" aria-label="Personnalisation de l'apparence">
         <div className="theme-popover-heading"><div><small>DISPLAY SETTINGS</small><strong>Make it yours</strong></div><button type="button" aria-label="Fermer" onClick={() => setOpen(false)}>×</button></div>
         <div className="theme-options">
-          {themes.map((item) => <button type="button" key={item.id} className={"theme-option " + (theme === item.id ? "is-active" : "")} aria-pressed={theme === item.id} onClick={() => { setTheme(item.id); if (!window.localStorage.getItem("specproof-accent")) setAccent(item.accent); }}>
+          {themes.map((item) => <button type="button" key={item.id} className={"theme-option " + (theme === item.id ? "is-active" : "")} aria-pressed={theme === item.id} onClick={() => { setTheme(item.id); setAccent((current) => current === "#4657D8" ? item.accent : current); }}>
             <span className={"theme-swatch swatch-" + item.id}><i /></span><span><b>{item.label}</b><small>{item.description}</small></span><span className="theme-option-check">{theme === item.id ? "✓" : ""}</span>
           </button>)}
         </div>
