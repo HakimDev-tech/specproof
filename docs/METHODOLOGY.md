@@ -22,7 +22,7 @@ The baseline evaluator retrieves a reference corpus **after the model has genera
 | Freshness / version signal | 15% | Source temporal proxy, adjusted for an explicit target-version match |
 | Completeness | 15% | Coverage of scenario-specific required terms; a transparent lexical proxy, not semantic completeness |
 | Efficiency | 10% | Generation latency and token budget thresholds |
-| Uncertainty / abstention | 5% | Abstention behavior on the two tasks explicitly requiring it; neutral score on other tasks |
+| Uncertainty / abstention | 5% | Abstention behavior on the dedicated task explicitly requiring it; neutral score on other tasks |
 
 All metrics are clamped to [0, 100]. The weighted total is the sum of dimension scores multiplied by the weights above.
 
