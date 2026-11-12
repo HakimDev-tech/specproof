@@ -17,7 +17,7 @@ export default async function Home() {
           <span>Independent benchmark series</span>
           <span>Vol. 01 / 2026</span>
         </div>
-        <a href="#suite" className="masthead-link">Explore the index <span aria-hidden="true">↘</span></a>
+        <a href="/benchmark" className="masthead-link">Run the benchmark <span aria-hidden="true">↗</span></a>
       </header>
 
       <div className="publication-grid">
