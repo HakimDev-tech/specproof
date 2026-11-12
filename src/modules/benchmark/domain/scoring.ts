@@ -15,7 +15,6 @@ export function scoreAttempt(input: Omit<ScoreBreakdown, "total">): ScoreBreakdo
   const values = Object.fromEntries(
     Object.entries(input).map(([key, value]) => [key, clamp(Number.isFinite(value) ? value : 0)]),
   ) as Omit<ScoreBreakdown, "total">;
-
   const total = Object.entries(SCORE_WEIGHTS).reduce(
     (sum, [key, weight]) => sum + values[key as keyof typeof values] * weight,
     0,
@@ -23,7 +22,6 @@ export function scoreAttempt(input: Omit<ScoreBreakdown, "total">): ScoreBreakdo
   return { ...values, total: Number(total.toFixed(2)) };
 }
 
-/** Coverage is a transparent lexical diagnostic, never a substitute for semantic correctness. */
 export function deterministicChecks(answer: string, required: string[], forbidden: string[] = []) {
   const normalized = answer.toLocaleLowerCase();
   const matched = required.filter((term) => normalized.includes(term.toLocaleLowerCase()));
@@ -32,9 +30,7 @@ export function deterministicChecks(answer: string, required: string[], forbidde
     matched,
     missing: required.filter((term) => !matched.includes(term)),
     violations,
-    score: required.length
-      ? clamp((100 * matched.length) / required.length - violations.length * 25)
-      : 0,
+    score: required.length ? clamp((100 * matched.length) / required.length - violations.length * 25) : 0,
   };
 }
 
@@ -58,22 +54,24 @@ export function normalizeEvidenceUrl(value: string): string | null {
 }
 
 export function evaluateClaimEvidence(claims: ClaimAssessment[], knownEvidenceUrls: string[]) {
-  const known = new Set(
-    knownEvidenceUrls.map(normalizeEvidenceUrl).filter((value): value is string => value !== null),
-  );
+  const known = new Set(knownEvidenceUrls.map(normalizeEvidenceUrl).filter((value): value is string => value !== null));
   const assessed = claims.map((claim) => {
     const validSources = [...new Set(claim.sourceUrls
       .map(normalizeEvidenceUrl)
       .filter((value): value is string => value !== null && known.has(value)))];
-    const supported = claim.supported && validSources.length > 0;
-    return { ...claim, supported, verifiedSourceUrls: validSources };
+    const factuallySupported = claim.supported;
+    const supported = factuallySupported && validSources.length > 0;
+    return { ...claim, factuallySupported, supported, verifiedSourceUrls: validSources };
   });
   const supportedCount = assessed.filter((claim) => claim.supported).length;
+  const factualCount = assessed.filter((claim) => claim.factuallySupported).length;
   return {
     claims: assessed,
     totalClaims: assessed.length,
     supportedClaims: supportedCount,
-    unsupportedClaims: assessed.length - supportedCount,
+    factuallySupportedClaims: factualCount,
+    unsupportedClaims: assessed.length - factualCount,
+    factualScore: assessed.length ? (factualCount / assessed.length) * 100 : 0,
     score: assessed.length ? (supportedCount / assessed.length) * 100 : 0,
   };
 }
@@ -85,25 +83,18 @@ export interface FreshnessEvidence {
   publishedAt?: string;
 }
 
-/**
- * A transparent temporal proxy. It deliberately treats undated documentation as unknown (50),
- * not fresh. Version compatibility is assessed separately from publication age.
- */
-export function scoreSourceFreshness(
-  evidence: FreshnessEvidence[],
-  targetVersion: string,
-  now = new Date(),
-) {
+/** Temporal proxy: undated sources are unknown (50), never presumed fresh. */
+export function scoreSourceFreshness(evidence: FreshnessEvidence[], targetVersion: string, now = new Date()) {
   if (!evidence.length) return { score: 0, datedSources: 0, versionMatches: 0, sourceCount: 0 };
   const normalizedTarget = targetVersion.toLowerCase().replace(/\s+/g, " ").trim();
-  const versionCandidates = normalizedTarget.split(/\s+vs\.?\s+/i).map((value) => value.replace(/\+/g, "").trim()).filter(Boolean);
+  const versionCandidates = normalizedTarget.split(/\s+vs\.?\s+/i)
+    .map((value) => value.replace(/\+/g, "").trim()).filter(Boolean);
   let datedSources = 0;
   let versionMatches = 0;
   const scores = evidence.map((item) => {
     const haystack = [item.url, item.title, item.snippet].join(" ").toLowerCase();
-    const versionMatch = versionCandidates.length > 0 && versionCandidates.some((candidate) => haystack.includes(candidate));
+    const versionMatch = versionCandidates.some((candidate) => haystack.includes(candidate));
     if (versionMatch) versionMatches += 1;
-
     let temporal = 50;
     if (item.publishedAt) {
       const published = new Date(item.publishedAt);
@@ -113,7 +104,6 @@ export function scoreSourceFreshness(
         temporal = ageDays < 0 ? 0 : ageDays <= 365 ? 100 : ageDays <= 730 ? 85 : ageDays <= 1460 ? 65 : 40;
       }
     }
-    // Version signal is weighted more heavily than recency: a recent wrong-version page is not fresh.
     return versionMatch ? temporal : temporal * 0.6;
   });
   return {
