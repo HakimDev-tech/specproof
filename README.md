@@ -41,3 +41,4 @@ Freshness is not inferred from retrieval time. Sources without a verifiable publ
 ## CI
 
 GitHub Actions runs TypeScript checks, unit tests, and a production build on Node.js 22 for pushes and pull requests to `main`.
+\n\n## Result interpretation\n\nDo not compare only run-level averages. Inspect paired per-task scores, dimension breakdowns, failed tasks, source dates and claim-level evidence. The benchmark console exports persisted run summaries as JSON. A single 12-task run is exploratory; publication-grade claims require multiple repetitions, human-annotated gold answers, an independent evaluator and version-pinned source snapshots.\n
