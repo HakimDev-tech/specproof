@@ -4,7 +4,7 @@ import { sql } from "@/lib/db/client";
 import {
   executeAgent,
   verifyClaims,
-} from "@/modules/agent-runtime/bifrost";
+} from "@/modules/agent-runtime/openrouter";
 import { scenarios } from "@/modules/benchmark/application/scenarios";
 import {
   deterministicChecks,
