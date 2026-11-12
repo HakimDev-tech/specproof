@@ -113,7 +113,7 @@ export async function POST(
     const noSourceAbstentionCase = scenario.expected.mustAbstain === true
       && scenario.expected.officialDomains.length === 0;
     const abstentionEvidenceScore = noSourceAbstentionCase
-      ? (abstained && !/https?:\\/\\//i.test(result.answer) ? 100 : 0)
+      ? (abstained && !result.answer.includes("http://") && !result.answer.includes("https://") ? 100 : 0)
       : evidenceScore;
     const metrics = scoreAttempt({
       correctness: claimVerificationStatus === "completed"
