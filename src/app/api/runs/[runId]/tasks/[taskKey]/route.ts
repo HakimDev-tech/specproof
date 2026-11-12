@@ -30,7 +30,7 @@ export async function POST(
   if (!scenario) return NextResponse.json({ error: "Unknown task" }, { status: 404 });
 
   const [run] = await sql`
-    SELECT r.id, a.mode
+    SELECT r.id, r.total_tasks, a.mode
     FROM benchmark_runs r
     JOIN agent_configs a ON a.id = r.agent_config_id
     WHERE r.id = ${runId}
@@ -180,8 +180,7 @@ export async function POST(
       WHERE run_id = ${runId}
     `;
 
-    const completed = progress.completed >= progress.attempted && progress.attempted >= 0;
-    const allAttempted = progress.attempted >= 12;
+    const allAttempted = progress.attempted >= run.total_tasks;
     const finalStatus = allAttempted
       ? progress.failed > 0
         ? "partially_completed"

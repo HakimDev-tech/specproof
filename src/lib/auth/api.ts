@@ -2,7 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 
 export function requireApiToken(request: Request): NextResponse | null {
-  const configured = process.env.SPECProof_API_TOKEN;
+  const configured = process.env.SPECPROOF_API_TOKEN;
   if (!configured || configured.length < 32) {
     return NextResponse.json(
       { error: "API authentication is not configured" },
