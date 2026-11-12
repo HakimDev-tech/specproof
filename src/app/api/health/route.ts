@@ -1,1 +1,5 @@
-import{NextResponse}from"next/server";export async function GET(){return NextResponse.json({status:"ok",services:{database:!!process.env.DATABASE_URL,bifrost:!!(process.env.BIFROST_BASE_URL&&process.env.BIFROST_API_KEY&&process.env.BIFROST_MODEL),tavily:!!process.env.TAVILY_API_KEY}})}
+import { NextResponse } from "next/server";
+
+export async function GET() {
+  return NextResponse.json({ status: "ok" });
+}
