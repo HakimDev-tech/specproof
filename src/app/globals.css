@@ -204,8 +204,8 @@ a:focus-visible { outline-color:#38BDF8; }
 .console-mode-cyan { color:#38BDF8; }
 .console-mode-amber { color:#F59E0B; }
 .console-panel { grid-column:1; margin:0; padding:18px 0; border-bottom:1px solid #1E2532; }
-.console-panel:nth-of-type(3) { grid-row:3; }
-.console-panel:nth-of-type(4) { grid-row:4; }
+.console-panel:nth-of-type(2) { grid-row:3; }
+.console-panel:nth-of-type(3) { grid-row:4; }
 .console-panel-head { margin-bottom:14px; color:#A7B3C2; font:9px ui-monospace,monospace; letter-spacing:.1em; }
 .console-panel-head span:last-child { color:#64748B; font:8px ui-monospace,monospace; }
 .security-badge { color:#91A1B5!important; cursor:help; }
