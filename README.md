@@ -6,12 +6,12 @@ Evidence-based benchmarking for AI developer research agents.
 
 Requirements: Node.js 22 LTS and npm.
 
-1. Install dependencies: `npm install`
-2. For local development, link the Vercel project and pull its development-only environment: `npx vercel link --project specproof`, then `npx vercel env pull .env.local --environment=development`. This uses a separate Neon development branch. Add your Bifrost and Tavily credentials to the local `.env.local` file; production/preview Secret values are intentionally not retrievable by `vercel env pull`. Alternatively, copy `.env.example` to `.env.local` and fill all values manually.
-3. Set `DATABASE_URL`, `BIFROST_BASE_URL`, `BIFROST_API_KEY`, `BIFROST_MODEL`, `TAVILY_API_KEY`, and a random `SPECPROOF_API_TOKEN` of at least 32 characters.
-4. Apply the schema: `npm run db:migrate`
-5. Run checks: `npm run typecheck && npm test && npm run build`
-6. Start locally: `npm run dev`
+1. Install dependencies: `npm install`.
+2. For local development, link the Vercel project and pull its development-only environment: `npx vercel link --project specproof`, then `npx vercel env pull .env.local --environment=development`. This uses a separate Neon development branch. Add your OpenRouter and Tavily credentials to the local `.env.local` file; production/preview Secret values are intentionally not retrievable by `vercel env pull`. Alternatively, copy `.env.example` to `.env.local` and fill all values manually.
+3. Set `DATABASE_URL`, `OPENROUTER_BASE_URL` (normally `https://openrouter.ai/api/v1`), `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`, `TAVILY_API_KEY`, and a random `SPECPROOF_API_TOKEN` of at least 32 characters. `OPENROUTER_SITE_URL` is optional and used as OpenRouter attribution metadata.
+4. Apply the schema: `npm run db:migrate`.
+5. Run checks: `npm run typecheck && npm test && npm run build`.
+6. Start locally: `npm run dev`.
 
 Never commit `.env.local` or paste API keys into source files, issues, or chat.
 
@@ -30,7 +30,7 @@ curl -X POST http://localhost:3000/api/runs \
   -d '{"mode":"baseline"}'
 ```
 
-Execute each task independently using the returned run ID and each of the 12 task keys. Use `mode: "research"` to enable Tavily retrieval and claim-to-evidence auditing.
+Execute each task independently using the returned run ID and each of the 12 task keys. Use `mode: "research"` to enable Tavily Search + Extract and claim-to-evidence auditing. Baseline deliberately skips Tavily retrieval and claim auditing.
 
 ## Evaluation integrity
 
