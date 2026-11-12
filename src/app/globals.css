@@ -120,3 +120,14 @@ html[data-theme="dark"] .theme-trigger,html[data-theme="midnight"] .theme-trigge
 .color-wheel:after{content:"";position:absolute;inset:10px;border:2px solid white;border-radius:50%;background:var(--accent-custom);box-shadow:0 0 0 1px #0002;pointer-events:none}
 .color-wheel input:focus-visible{opacity:1;outline:2px solid var(--blue);outline-offset:4px}
 @media(max-width:720px){.results-dimensions{grid-template-columns:repeat(2,minmax(0,1fr));padding:0 9px 12px}.results-actions{gap:7px}.results-actions button{padding:6px 7px}}
+
+.paired-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));padding:15px;gap:10px}
+.paired-grid>div{min-width:0;padding:10px;border:1px solid var(--line);border-radius:6px;background:var(--paper)}
+.paired-grid span,.paired-grid small{display:block;color:var(--muted);font-size:8px}
+.paired-grid b{display:block;margin:7px 0 4px;color:var(--ink);font:19px var(--mono)}
+.paired-grid b.delta-positive{color:var(--green)}
+.paired-grid b.delta-negative{color:var(--red)}
+.paired-grid small{font:7px var(--mono)}
+html[data-theme="dark"] .paired-grid>div,html[data-theme="midnight"] .paired-grid>div,html[data-theme="forest"] .paired-grid>div{background:var(--paper);border-color:var(--line)}
+@media(max-width:900px){.paired-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:520px){.paired-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
