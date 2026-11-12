@@ -16,7 +16,7 @@ interface ChatCompletionResponse {
 }
 
 function getOpenRouterConfig() {
-  const baseURL = process.env.OPENROUTER_BASE_URL?.replace(/\\/+$/, "");
+  const baseURL = process.env.OPENROUTER_BASE_URL?.replace(/\/+$/, "");
   const apiKey = process.env.OPENROUTER_API_KEY;
   const model = process.env.OPENROUTER_MODEL;
 
@@ -71,9 +71,9 @@ export async function executeAgent(input: {
   const context = (input.evidence ?? [])
     .map(
       (item, index) =>
-        `[Source ${index + 1}] ${item.title}\\n${item.url}\\n${item.snippet}`,
+        `[Source ${index + 1}] ${item.title}\n${item.url}\n${item.snippet}`,
     )
-    .join("\\n\\n");
+    .join("\n\n");
 
   const system =
     input.mode === "research"
@@ -88,7 +88,7 @@ export async function executeAgent(input: {
         role: "user",
         content:
           input.prompt +
-          (input.mode === "research" ? `\\n\\nRetrieved evidence:\\n${context}` : ""),
+          (input.mode === "research" ? `\n\nRetrieved evidence:\n${context}` : ""),
       },
     ],
     0,
@@ -146,7 +146,7 @@ export async function verifyClaims(input: {
   ]);
 
   const raw = result.choices?.[0]?.message?.content ?? "";
-  const cleaned = raw.replace(/^\\s*```(?:json)?\\s*/i, "").replace(/\\s*```\\s*$/, "");
+  const cleaned = raw.replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
   let parsed: unknown;
   try {
     parsed = JSON.parse(cleaned);
