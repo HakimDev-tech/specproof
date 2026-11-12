@@ -100,7 +100,7 @@ export function scoreSourceFreshness(
   let versionMatches = 0;
   const scores = evidence.map((item) => {
     const haystack = [item.url, item.title, item.snippet].join(" ").toLowerCase();
-    const versionMatch = normalizedTarget.length > 0 && haystack.includes(normalizedTarget);
+    const versionMatch = versionCandidates.length > 0 && versionCandidates.some((candidate) => haystack.includes(candidate));
     if (versionMatch) versionMatches += 1;
 
     let temporal = 50;
