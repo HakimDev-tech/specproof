@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { requireApiToken } from "@/lib/auth/api";
 import { sql } from "@/lib/db/client";
 import { executeAgent, verifyClaims } from "@/modules/agent-runtime/openrouter";
@@ -22,6 +23,9 @@ export async function POST(
   if (!sql) return NextResponse.json({ error: "DATABASE_URL is not configured" }, { status: 503 });
 
   const { runId, taskKey } = await params;
+  if (!z.string().uuid().safeParse(runId).success) {
+    return NextResponse.json({ error: "Invalid run ID" }, { status: 400 });
+  }
   const scenario = scenarios.find((item) => item.key === taskKey);
   if (!scenario) return NextResponse.json({ error: "Unknown task" }, { status: 404 });
 
@@ -47,9 +51,22 @@ export async function POST(
     INSERT INTO task_attempts(run_id, task_id, status)
     VALUES (${runId}, ${task.id}, 'running')
     ON CONFLICT(run_id, task_id)
-    DO UPDATE SET status = 'running', error = NULL, started_at = now(), completed_at = NULL
+    DO UPDATE SET
+      status = 'running',
+      error = NULL,
+      started_at = now(),
+      completed_at = NULL
+    WHERE task_attempts.status <> 'running'
     RETURNING id
   `;
+
+  // Prevent two browser tabs or retried requests from executing the same task concurrently.
+  if (!attempt) {
+    return NextResponse.json(
+      { error: "This task is already running for the selected experiment" },
+      { status: 409 },
+    );
+  }
 
   try {
     await sql`DELETE FROM evidence_items WHERE attempt_id = ${attempt.id}`;
