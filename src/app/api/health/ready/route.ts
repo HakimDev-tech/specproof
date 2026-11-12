@@ -18,9 +18,12 @@ export async function GET(request: Request) {
     return NextResponse.json({
       status: "ready",
       database: "connected",
-      bifrost: process.env.BIFROST_BASE_URL && process.env.BIFROST_API_KEY && process.env.BIFROST_MODEL
-        ? "configured"
-        : "missing_configuration",
+      openrouter:
+        process.env.OPENROUTER_BASE_URL &&
+        process.env.OPENROUTER_API_KEY &&
+        process.env.OPENROUTER_MODEL
+          ? "configured"
+          : "missing_configuration",
       tavily: process.env.TAVILY_API_KEY ? "configured" : "missing_configuration",
     });
   } catch {
