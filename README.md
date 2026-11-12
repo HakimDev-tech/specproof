@@ -7,7 +7,7 @@ Evidence-based benchmarking for AI developer research agents.
 Requirements: Node.js 22 LTS and npm.
 
 1. Install dependencies: `npm install`
-2. Copy `.env.example` to `.env.local`.
+2. For local development, link the Vercel project and pull its development-only environment: `npx vercel link --project specproof`, then `npx vercel env pull .env.local --environment=development`. This uses a separate Neon development branch. Add your Bifrost and Tavily credentials to the local `.env.local` file; production/preview Secret values are intentionally not retrievable by `vercel env pull`. Alternatively, copy `.env.example` to `.env.local` and fill all values manually.
 3. Set `DATABASE_URL`, `BIFROST_BASE_URL`, `BIFROST_API_KEY`, `BIFROST_MODEL`, `TAVILY_API_KEY`, and a random `SPECPROOF_API_TOKEN` of at least 32 characters.
 4. Apply the schema: `npm run db:migrate`
 5. Run checks: `npm run typecheck && npm test && npm run build`
