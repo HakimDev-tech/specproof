@@ -54,10 +54,13 @@ export async function POST(request: Request) {
   const [agent] = await sql`
     INSERT INTO agent_configs(name, mode, model, settings)
     VALUES (
-      ${parsed.data.name ?? (parsed.data.mode === "research" ? "Tavily Research Agent" : "Baseline Agent")},
+      ${parsed.data.name ?? (parsed.data.mode === "research" ? "OpenRouter + Tavily Research Agent" : "OpenRouter Baseline Agent")},
       ${parsed.data.mode},
-      ${process.env.BIFROST_MODEL ?? "unconfigured"},
-      ${sql.json({ retrieval: parsed.data.mode === "research" ? "tavily" : "none" })}
+      ${process.env.OPENROUTER_MODEL ?? "unconfigured"},
+      ${sql.json({
+        provider: "openrouter",
+        retrieval: parsed.data.mode === "research" ? "tavily-search-extract" : "none",
+      })}
     )
     RETURNING id
   `;
