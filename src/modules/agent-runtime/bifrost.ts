@@ -37,7 +37,7 @@ async function completion(
       "content-type": "application/json",
     },
     body: JSON.stringify({ model, temperature, messages }),
-    signal: AbortSignal.timeout(45_000),
+    signal: AbortSignal.timeout(20_000),
     cache: "no-store",
   });
 

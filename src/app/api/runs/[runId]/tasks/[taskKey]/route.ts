@@ -226,6 +226,22 @@ export async function POST(
       SET status = 'failed', error = ${message}, completed_at = now()
       WHERE id = ${attempt.id}
     `;
+    const [progress] = await sql`
+      SELECT
+        count(*) FILTER (WHERE status = 'completed')::int AS completed,
+        count(*) FILTER (WHERE status = 'failed')::int AS failed,
+        count(*)::int AS attempted
+      FROM task_attempts
+      WHERE run_id = ${runId}
+    `;
+    const allAttempted = progress.attempted >= run.total_tasks;
+    await sql`
+      UPDATE benchmark_runs
+      SET status = ${allAttempted ? "partially_completed" : "running"},
+          completed_tasks = ${progress.completed},
+          completed_at = CASE WHEN ${allAttempted} THEN now() ELSE NULL END
+      WHERE id = ${runId}
+    `;
     return NextResponse.json(
       { error: message, attemptId: attempt.id },
       { status: 502 },
