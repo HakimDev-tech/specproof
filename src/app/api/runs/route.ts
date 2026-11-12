@@ -60,6 +60,7 @@ export async function POST(request: Request) {
       ${sql.json({
         provider: "openrouter",
         retrieval: parsed.data.mode === "research" ? "tavily-search-extract" : "none",
+        evaluatorModel: process.env.OPENROUTER_EVALUATOR_MODEL ?? process.env.OPENROUTER_MODEL ?? "unconfigured",
       })}
     )
     RETURNING id
