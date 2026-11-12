@@ -43,11 +43,11 @@ The freshness function is a **temporal proxy**, not a formal version validator:
 - Undated or unparseable date: 50 (unknown, not “fresh”).
 - A target-version string match in the URL/title/excerpt retains the temporal score; no match applies a 0.6 multiplier.
 
-This does not prove that a documentation page is current or that the content matches every semantic detail of a release. Version-specific gold assertions and immutable documentation snapshots are still needed for a publication-grade freshness benchmark.
+This does not prove that a documentation page is current or that the content matches every semantic detail of a release. The target-version string match is a weak metadata signal, not a semantic compatibility test. Version-specific gold assertions and immutable documentation snapshots are still needed for a publication-grade freshness benchmark.
 
 ## Evidence and model-judge limitations
 
-- The answer model and claim auditor currently use the same `OPENROUTER_MODEL` configuration. This creates correlated-error and self-evaluation risks. Scores are model-assisted judgments, not independent ground truth.
+- The answer model uses `OPENROUTER_MODEL`. The claim auditor uses `OPENROUTER_EVALUATOR_MODEL` when configured, and otherwise falls back to the answer model. Configure a distinct evaluator model to reduce (but not eliminate) correlated-error and self-evaluation risks. Scores remain model-assisted judgments, not independent ground truth.
 - Required/forbidden terms are lexical diagnostics. They can be satisfied by incorrect explanations and missed by correct paraphrases.
 - Official-domain matching checks hostnames, not page authority, release scope, or claim entailment.
 - Tavily publication dates may be absent or reflect page metadata rather than the underlying API version.
