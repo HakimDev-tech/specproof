@@ -13,5 +13,5 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { themeColor: "#F6F7FA", colorScheme: "light" };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en"><body className={\`${geist.variable} ${geistMono.variable}\`}>{children}</body></html>;
+  return <html lang="en"><body className={geist.variable + " " + geistMono.variable}>{children}</body></html>;
 }
