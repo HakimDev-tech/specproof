@@ -10,7 +10,7 @@ export default async function Home() {
   const suites = await listSuites();
 
   return (
-    <main className="publication-shell">
+    <main id="top" className="publication-shell">
       <header className="masthead">
         <a href="/" className="wordmark" aria-label="SPECProof home">SPEC<span>/</span>PROOF</a>
         <div className="masthead-meta">
@@ -90,7 +90,7 @@ export default async function Home() {
           <footer className="publication-footer">
             <span>SPECProof / Research instrument 001</span>
             <span>Accuracy is a claim. Evidence is the test.</span>
-            <a href="#top" onClick={(event) => { event.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); }}>Back to top ↑</a>
+            <a href="#top">Back to top ↑</a>
           </footer>
         </div>
       </div>
