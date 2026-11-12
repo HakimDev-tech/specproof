@@ -11,7 +11,8 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "db:migrate": "tsx scripts/migrate.ts"
+    "db:migrate": "tsx scripts/migrate.ts",
+    "benchmark:all": "tsx scripts/run-benchmarks.ts"
   },
   "dependencies": {
     "@tavily/core": "1.0.0",
