@@ -1,6 +1,5 @@
 "use client";
 
-import "./benchmark-polish.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 const scenarios = [
@@ -8,133 +7,88 @@ const scenarios = [
   ["mig-01","Next.js 15 async request APIs","Breaking changes"],["mig-02","React 19 ref migration","Breaking changes"],["mig-03","Node.js deprecation signals","Breaking changes"],["mig-04","Tailwind CSS v4 migration","Breaking changes"],
   ["doc-01","TypeScript satisfies source discovery","Documentation research"],["doc-02","Next.js version disambiguation","Documentation research"],["doc-03","PostgreSQL evidence boundary","Documentation research"],["doc-04","Insufficient evidence abstention","Documentation research"],
 ] as const;
-type Mode = "baseline" | "research";
-type ScenarioState = "pending" | "running" | "completed" | "failed";
-type RunSummary = { mode: Mode; id: string; status: string; completed: number; failed: number; score: number | null };
-type EventItem = { id: number; time: string; level: "info" | "success" | "warning" | "error"; message: string };
-const clock = () => new Date().toLocaleTimeString("en-GB",{hour12:false});
+type Mode="baseline"|"research";
+type State="pending"|"running"|"completed"|"failed";
+type Run={mode:Mode;id:string;status:string;completed:number;failed:number;score:number|null};
+type Event={id:number;time:string;level:"info"|"success"|"warning"|"error";message:string};
+const timeNow=()=>new Date().toLocaleTimeString("en-GB",{hour12:false});
 
-export default function BenchmarkConsole() {
-  const [token,setToken] = useState("");
-  const [running,setRunning] = useState(false);
-  const [modeLabel,setModeLabel] = useState("Ready to execute");
-  const [progress,setProgress] = useState(0);
-  const [events,setEvents] = useState<EventItem[]>([]);
-  const [runs,setRuns] = useState<RunSummary[]>([]);
-  const [error,setError] = useState("");
-  const [includeBaseline,setIncludeBaseline] = useState(true);
-  const [includeResearch,setIncludeResearch] = useState(true);
-  const [density,setDensity] = useState<"compact"|"comfortable">("compact");
-  const [health,setHealth] = useState<"checking"|"healthy"|"degraded"|"unknown">("checking");
-  const [scenarioStates,setScenarioStates] = useState<Record<string,ScenarioState>>({});
-  const eventSequence = useRef(0);
-  const logViewport = useRef<HTMLDivElement>(null);
-  const total = useMemo(() => (includeBaseline?12:0)+(includeResearch?12:0),[includeBaseline,includeResearch]);
-  const latestScore = runs.length ? runs[runs.length-1].score : null;
+export default function BenchmarkConsole(){
+  const [token,setToken]=useState("");
+  const [running,setRunning]=useState(false);
+  const [progress,setProgress]=useState(0);
+  const [events,setEvents]=useState<Event[]>([]);
+  const [runs,setRuns]=useState<Run[]>([]);
+  const [error,setError]=useState("");
+  const [baseline,setBaseline]=useState(true);
+  const [research,setResearch]=useState(true);
+  const [health,setHealth]=useState<"checking"|"healthy"|"degraded"|"unknown">("checking");
+  const [states,setStates]=useState<Record<string,State>>({});
+  const [operation,setOperation]=useState("Waiting for an execution");
+  const sequence=useRef(0);
+  const logRef=useRef<HTMLDivElement>(null);
+  const total=useMemo(()=>12*(Number(baseline)+Number(research)),[baseline,research]);
+  const selectedRuns=Number(baseline)+Number(research);
+  const latestScore=runs.length?runs[runs.length-1].score:null;
 
-  useEffect(() => {
-    let active=true;
-    fetch("/api/health",{cache:"no-store"}).then(async r=>{if(!r.ok) throw new Error("Health unavailable"); const data=await r.json(); if(active)setHealth(data?.status==="ok"?"healthy":"degraded");}).catch(()=>{if(active)setHealth("unknown");});
-    return ()=>{active=false;};
-  },[]);
-  useEffect(()=>{if(logViewport.current)logViewport.current.scrollTo({top:logViewport.current.scrollHeight,behavior:"smooth"});},[events]);
-
-  function emit(message:string,level:EventItem["level"]="info") {
-    eventSequence.current+=1;
-    const item={id:eventSequence.current,time:clock(),level,message};
-    setEvents(current=>[...current.slice(-199),item]);
-  }
-  async function request<T>(path:string,method="GET",body?:unknown):Promise<T> {
+  useEffect(()=>{let active=true;fetch("/api/health",{cache:"no-store"}).then(async r=>{if(!r.ok)throw new Error();const d=await r.json();if(active)setHealth(d?.status==="ok"?"healthy":"degraded");}).catch(()=>{if(active)setHealth("unknown");});return()=>{active=false;};},[]);
+  useEffect(()=>{logRef.current?.scrollTo({top:logRef.current.scrollHeight,behavior:"smooth"});},[events]);
+  function log(message:string,level:Event["level"]="info"){sequence.current+=1;setEvents(old=>[...old.slice(-199),{id:sequence.current,time:timeNow(),level,message}]);}
+  async function api<T>(path:string,method="GET",body?:unknown):Promise<T>{
     const response=await fetch(path,{method,headers:{Authorization:"Bearer "+token,...(body===undefined?{}:{"Content-Type":"application/json"})},...(body===undefined?{}:{body:JSON.stringify(body)}),cache:"no-store"});
-    const payload=await response.json().catch(()=>null);
-    if(!response.ok)throw new Error(payload?.error??"Request failed (HTTP "+response.status+")");
-    return payload as T;
+    const payload=await response.json().catch(()=>null);if(!response.ok)throw new Error(payload?.error??"HTTP "+response.status);return payload as T;
   }
-  async function executeMode(mode:Mode) {
-    emit("Initializing "+mode.toUpperCase()+" run");
-    const created=await request<{data:{id:string}}>("/api/runs","POST",{mode,name:mode==="baseline"?"OpenRouter Baseline — 12 scenarios":"OpenRouter + Tavily Research — 12 scenarios"});
-    const runId=created.data.id;
-    emit("Run persisted · "+runId,"success");
-    let completed=0,failed=0;
-    for(const [index,[key,title]] of scenarios.entries()) {
-      setModeLabel(mode.toUpperCase()+" / "+String(index+1).padStart(2,"0")+" · "+title);
-      setScenarioStates(current=>({...current,[key]:"running"}));
-      emit("Executing "+key+" · "+title);
-      try {
-        const result=await request<{data:{score?:{total?:number}}}>("/api/runs/"+runId+"/tasks/"+key,"POST",{});
-        completed+=1; setScenarioStates(current=>({...current,[key]:"completed"}));
-        emit(key+" completed · score "+(result.data.score?.total??"not returned"),"success");
-      } catch(cause) {
-        failed+=1; setScenarioStates(current=>({...current,[key]:"failed"}));
-        emit(key+" failed · "+(cause instanceof Error?cause.message:String(cause)),"error");
-      }
-      setProgress(value=>value+1);
+  async function execute(mode:Mode){
+    log("Creating "+mode.toUpperCase()+" experiment");
+    const created=await api<{data:{id:string}}>("/api/runs","POST",{mode,name:mode==="baseline"?"OpenRouter Baseline — 12 scenarios":"OpenRouter + Tavily Research — 12 scenarios"});
+    const id=created.data.id;log("Run persisted · "+id,"success");let completed=0,failed=0;
+    for(const [index,[key,title]] of scenarios.entries()){
+      setOperation(mode.toUpperCase()+" / "+String(index+1).padStart(2,"0")+" · "+title);
+      setStates(old=>({...old,[key]:"running"}));log("Executing "+key+" · "+title);
+      try{const result=await api<{data:{score?:{total?:number}}}>("/api/runs/"+id+"/tasks/"+key,"POST",{});completed++;setStates(old=>({...old,[key]:"completed"}));log(key+" completed · score "+(result.data.score?.total??"not returned"),"success");}
+      catch(e){failed++;setStates(old=>({...old,[key]:"failed"}));log(key+" failed · "+(e instanceof Error?e.message:String(e)),"error");}
+      setProgress(v=>v+1);
     }
-    const details=await request<{data:{status:string;aggregate_score:number|null}}>("/api/runs/"+runId);
-    const summary={mode,id:runId,status:details.data.status,completed,failed,score:details.data.aggregate_score};
-    setRuns(current=>[...current,summary]);
-    emit("Run finalized · "+completed+"/12 requests completed · "+failed+" failed · aggregate "+(summary.score??"N/A"),failed?"warning":"success");
+    const details=await api<{data:{status:string;aggregate_score:number|null}}>("/api/runs/"+id);
+    const summary={mode,id,status:details.data.status,completed,failed,score:details.data.aggregate_score};setRuns(old=>[...old,summary]);log("Run finalized · "+completed+"/12 completed · "+failed+" failed","success");
   }
-  async function start() {
-    if(!token.trim()||running||total===0)return;
-    setRunning(true);setProgress(0);setEvents([]);eventSequence.current=0;setRuns([]);setError("");setScenarioStates({});
-    emit("Execution session opened · production API","success");
-    try {
-      if(includeBaseline)await executeMode("baseline");
-      if(includeResearch)await executeMode("research");
-      setModeLabel("All selected runs finished");emit("Selected workload finished","success");
-    } catch(cause) {
-      const message=cause instanceof Error?cause.message:String(cause);
-      setError(message);setModeLabel("Execution interrupted");emit("Execution halted · "+message,"error");
-    } finally {setRunning(false);}
+  async function start(){
+    if(!token.trim()||running||!total)return;
+    setRunning(true);setProgress(0);setEvents([]);sequence.current=0;setRuns([]);setError("");setStates({});log("Execution session opened · production API","success");
+    try{if(baseline)await execute("baseline");if(research)await execute("research");setOperation("All selected runs finished");log("Selected workload finished","success");}
+    catch(e){const message=e instanceof Error?e.message:String(e);setError(message);setOperation("Execution interrupted");log("Execution halted · "+message,"error");}
+    finally{setRunning(false);}
   }
-  const statusLabel=running?"RUN IN PROGRESS":error?"EXECUTION INTERRUPTED":runs.length?"EXECUTION COMPLETE":"READY TO EXECUTE";
-
-  return <main className="workbench workbench-v2" data-density={density} data-activity={running?"running":runs.length?"complete":"idle"}>
-    <div className="ambient-orb ambient-orb-one"/><div className="ambient-orb ambient-orb-two"/>
-    <header className="workbench-topbar">
-      <a href="/" className="brand-lockup"><span className="brand-mark">S<span>/</span>P</span><span className="brand-name">SPEC<span>PROOF</span></span></a>
-      <div className="breadcrumb"><a href="/">Workspace</a><span>/</span><b>Benchmark execution</b></div>
-      <div className="topbar-right"><span className={"system-status health-"+health}><i/>{health==="checking"?"CHECKING":health==="healthy"?"API HEALTHY":health==="degraded"?"API DEGRADED":"API UNKNOWN"}</span><a href="/" className="topbar-cta">Exit console <span>↗</span></a></div>
-    </header>
-    <div className="workbench-heading">
-      <div><div className="eyebrow"><span className="eyebrow-line"/> EXECUTION ENVIRONMENT <span className="eyebrow-id">SP / RUNNER 001</span></div><h1>Benchmark <span>runner.</span></h1><p>Controlled experiments for technical accuracy, evidence quality and version compatibility.</p></div>
-      <div className="heading-meta"><span>SUITE VERSION</span><b>1.0.0</b><span>SCENARIO COUNT</span><b>12</b><span>MAX EXECUTIONS</span><b>24 / RUN</b></div>
-    </div>
-    <div className="workbench-toolbar-row"><div className="workbench-context"><span className="context-mark">◈</span><span>EXPERIMENT CONTROL</span><i/><span>PRODUCTION ENVIRONMENT</span></div><div className="density-control" role="group" aria-label="Display density"><button type="button" className={density==="compact"?"active":""} onClick={()=>setDensity("compact")}>Compact</button><button type="button" className={density==="comfortable"?"active":""} onClick={()=>setDensity("comfortable")}>Comfortable</button></div></div>
-    <div className="workbench-grid">
-      <aside className="control-rail">
-        <div className="rail-section"><div className="rail-heading"><span>01</span> AUTHENTICATION <span className="rail-heading-meta">REQUIRED</span></div><label htmlFor="api-token">Production API token</label><input id="api-token" className="token-input" type="password" autoComplete="off" spellCheck={false} placeholder="SPECPROOF_API_TOKEN" value={token} onChange={e=>setToken(e.target.value)} disabled={running}/><div className="security-note" title="Token remains in volatile tab memory and is sent over HTTPS."><span>▣</span> RAM-ONLY <i/> TLS / HTTPS <b>ⓘ</b></div></div>
-        <div className="rail-section"><div className="rail-heading"><span>02</span> TEST CONDITIONS <span className="rail-heading-meta">{total} TASKS</span></div>
-          <label className={"mode-option mode-baseline "+(includeBaseline?"selected":"")}><input type="checkbox" checked={includeBaseline} onChange={e=>setIncludeBaseline(e.target.checked)} disabled={running}/><span className="mode-radio"/><span className="mode-copy"><b>Baseline</b><small>Without retrieval</small><em>OPENROUTER ONLY</em></span><span className="mode-count">12</span></label>
-          <label className={"mode-option mode-research "+(includeResearch?"selected":"")}><input type="checkbox" checked={includeResearch} onChange={e=>setIncludeResearch(e.target.checked)} disabled={running}/><span className="mode-radio"/><span className="mode-copy"><b>Research</b><small>With Tavily evidence</small><em>SEARCH + EXTRACT</em></span><span className="mode-count">12</span></label>
-          <div className="selection-summary"><span>SELECTED EXECUTIONS</span><strong>{String(total).padStart(2,"0")} <small>/ 24</small></strong></div>
-          <button className="launch-button" type="button" onClick={start} disabled={running||!token.trim()||total===0}><span>{running?"EXECUTING WORKLOAD":"LAUNCH BENCHMARK"}</span><b>{running?<span className="button-spinner"/>:"↗"}</b></button>
-          <div className="write-warning"><span>!</span> PRODUCTION WRITE · NEON DATABASE</div>
-        </div>
-        <div className="rail-footer"><span>EXECUTION API</span><b>/api/runs</b><span>PROVIDER ROUTING</span><b>OPENROUTER → TAVILY</b></div>
-        <div className="rail-decoration"><span className="rail-decoration-line"/><span>REPRODUCIBLE BY DESIGN</span><span className="rail-decoration-line"/></div>
+  const status=running?"RUNNING":error?"INTERRUPTED":runs.length?"COMPLETE":"READY";
+  return <main className="runner-shell">
+    <header className="runner-header"><a className="brand" href="/"><span className="brand-symbol">S<span>•</span>P</span><span className="brand-word">SPEC<span>PROOF</span></span></a><nav className="runner-nav"><a href="/">Overview</a><a className="selected" href="/benchmark">Benchmark runner</a></nav><div className="header-actions"><span className={"header-status health-"+health}><i/>{health==="checking"?"CHECKING API":health==="healthy"?"API OPERATIONAL":health==="degraded"?"API DEGRADED":"API UNKNOWN"}</span><a className="text-link" href="/">Exit runner ↗</a></div></header>
+    <div className="runner-title"><div><div className="kicker"><span className="kicker-line"/> CONTROLLED EXPERIMENT / PRODUCTION</div><h1>Benchmark <em>runner</em></h1><p>Execute the fixed SPECProof task set against two controlled evidence conditions.</p></div><div className="runner-version"><span>BENCHMARK SUITE</span><b>v1.0.0</b><span>SCENARIOS</span><b>12</b><span>MAX TASK CALLS</span><b>24</b></div></div>
+    <div className="runner-layout">
+      <aside className="runner-sidebar">
+        <section className="sidebar-section"><div className="sidebar-heading"><span>01</span> API AUTHENTICATION <b>REQUIRED</b></div><label htmlFor="api-token">Production API token</label><input id="api-token" type="password" value={token} onChange={e=>setToken(e.target.value)} placeholder="SPECPROOF_API_TOKEN" autoComplete="off" spellCheck={false} disabled={running}/><div className="privacy-note"><span>▣</span> TOKEN IN TAB MEMORY ONLY · HTTPS</div></section>
+        <section className="sidebar-section"><div className="sidebar-heading"><span>02</span> EXPERIMENT MODES <b>{total} TASKS</b></div>
+          <label className={"mode-card mode-blue "+(baseline?"chosen":"")}><input type="checkbox" checked={baseline} onChange={e=>setBaseline(e.target.checked)} disabled={running}/><span className="fake-check"/><span className="mode-detail"><b>Baseline</b><small>Direct model response</small><em>NO RETRIEVAL</em></span><strong>12</strong></label>
+          <label className={"mode-card mode-purple "+(research?"chosen":"")}><input type="checkbox" checked={research} onChange={e=>setResearch(e.target.checked)} disabled={running}/><span className="fake-check"/><span className="mode-detail"><b>Research</b><small>Search + evidence extraction</small><em>TAVILY ENABLED</em></span><strong>12</strong></label>
+          <div className="selected-total"><span>SELECTED TASK CALLS</span><b>{String(total).padStart(2,"0")} <small>/ 24</small></b></div>
+          <button className="run-button" onClick={start} disabled={running||!token.trim()||total===0}>{running?"EXECUTING…":"Run selected experiments"} <span>{running?<i className="spinner"/>:"↗"}</span></button>
+          <p className="write-note">! This action writes experiment records to the production Neon database.</p>
+        </section>
+        <div className="sidebar-foot"><span>EXECUTION ENDPOINT</span><b>POST /api/runs</b><span>MODEL ROUTING</span><b>OPENROUTER → TAVILY</b></div>
       </aside>
-      <section className="execution-area">
-        <div className="execution-toolbar"><div><span className={"live-indicator "+(running?"is-live":"")}/><b>{statusLabel}</b></div><span className="toolbar-id">RUNNER / 001 <i/> PRODUCTION</span></div>
-        <div className="telemetry-grid">
-          <div className="telemetry-cell"><span>EXECUTION PROGRESS</span><strong>{String(progress).padStart(2,"0")}<small>/{String(total).padStart(2,"0")}</small></strong><div className="telemetry-track"><i style={{width:(total?progress/total*100:0)+"%"}}/></div><div className="metric-foot">{total?Math.round(progress/total*100):0}% OF SELECTED WORKLOAD</div></div>
-          <div className="telemetry-cell"><span>RUNS PERSISTED</span><strong>{String(runs.length).padStart(2,"0")}<small>/{Number(includeBaseline)+Number(includeResearch)}</small></strong><em>{runs.length?"DATABASE UPDATED":"NO RUNS YET"}</em><div className="run-ledger" aria-label={runs.length+" of "+(Number(includeBaseline)+Number(includeResearch))+" selected runs persisted"}>{Array.from({length:Number(includeBaseline)+Number(includeResearch)},(_,i)=><span key={i} className={runs.length>i?"filled":""}/>)}</div></div>
-          <div className="telemetry-cell"><span>AGGREGATE SCORE</span><strong>{latestScore!==null?latestScore.toFixed(1):"—"}<small>{latestScore!==null?"/100":"N/A"}</small></strong><em>{runs.length?"LATEST COMPLETED RUN":"AWAITING RESULTS"}</em><div className="score-foot">{runs.length?"PERSISTED RESULT":"NO SCORE GENERATED"}</div></div>
+      <section className="runner-main">
+        <div className="run-statusbar"><span><i className={running?"pulse-active":""}/> {status}</span><small>RUNNER ID / 001 <b>·</b> LIVE ENVIRONMENT</small></div>
+        <div className="kpi-grid">
+          <div className="kpi"><span>EXECUTION PROGRESS</span><strong>{String(progress).padStart(2,"0")}<small> / {String(total).padStart(2,"0")}</small></strong><div className="progress-track"><i style={{width:(total?progress/total*100:0)+"%"}}/></div><small>{total?Math.round(progress/total*100):0}% OF SELECTED WORKLOAD</small></div>
+          <div className="kpi"><span>PERSISTED RUNS</span><strong>{String(runs.length).padStart(2,"0")}<small> / {selectedRuns}</small></strong><div className="kpi-foot">{runs.length?"DATABASE RECORDS CREATED":"AWAITING EXECUTION"}</div><div className="run-segments">{Array.from({length:selectedRuns},(_,i)=><i key={i} className={runs.length>i?"filled":""}/>)}</div></div>
+          <div className="kpi"><span>AGGREGATE SCORE</span><strong>{latestScore===null?"—":latestScore.toFixed(1)}<small>{latestScore===null?" / N/A":" / 100"}</small></strong><div className="kpi-foot">{runs.length?"LATEST PERSISTED RESULT":"NO SCORE GENERATED"}</div></div>
         </div>
-        <div className="current-task"><div><span className="micro-label">CURRENT OPERATION</span><b>{modeLabel}</b></div><span className={"operation-state "+(running?"is-running":"")}>{running?"PROCESSING":"IDLE"}</span></div>
-        {error&&<div className="execution-error"><b>EXECUTION ERROR</b><span>{error}</span></div>}
-        <div className="data-panel"><div className="data-panel-heading"><div><span className="micro-label">01 / TASK MANIFEST</span><h2>Scenario manifest</h2></div><span>12 FIXED CASES <i/> 03 DOMAINS</span></div>
-          <div className="scenario-table"><div className="scenario-table-head"><span>KEY</span><span>SCENARIO</span><span>DOMAIN</span><span>STATUS</span></div>
-            {scenarios.map(([key,title,category],index)=>{const state=scenarioStates[key]??"pending";return <div className={"scenario-table-row scenario-"+state} key={key} style={{animationDelay:(index*24)+"ms"}}><code>{key}</code><b>{title}</b><span>{category}</span><em>{state==="pending"?"IN SCOPE":state.toUpperCase()}</em></div>;})}
-          </div>
-        </div>
-        <div className="data-panel log-panel"><div className="data-panel-heading"><div><span className="micro-label">02 / EVENT STREAM</span><h2>Execution trace</h2></div><span>{String(events.length).padStart(2,"0")} EVENTS <i/> {running?"STREAMING":"CAPTURED"}</span></div>
-          <div className="event-stream" ref={logViewport} aria-label="Execution events">{events.length===0?<div className="empty-stream"><span>⌁</span><div><b>Awaiting first event</b><small>Run initialization, scenario transitions and evaluator responses will appear here.</small></div><span className="empty-orbit"/></div>:events.map(event=><div className={"event-line event-"+event.level} key={event.id}><span className="event-sequence">{String(event.id).padStart(3,"0")}</span><time>{event.time}</time><i/><code>{event.message}</code></div>)}</div>
-        </div>
-        {runs.length>0&&<div className="data-panel results-panel"><div className="data-panel-heading"><div><span className="micro-label">03 / PERSISTED OUTPUT</span><h2>Run results</h2></div><span>{runs.length} RECORD(S)</span></div><div className="results-table"><div className="results-head"><span>MODE</span><span>RUN ID</span><span>COMPLETED</span><span>FAILED</span><span>SCORE</span><span>STATUS</span></div>{runs.map(run=><div className="results-row" key={run.id}><b className={run.mode==="baseline"?"cyan-text":"amber-text"}>{run.mode.toUpperCase()}</b><code title={run.id}>{run.id}</code><span>{run.completed}/12</span><span>{run.failed}</span><strong>{run.score===null?"—":run.score.toFixed(1)}</strong><em>{run.status}</em></div>)}</div></div>}
+        <div className="operation-bar"><div><span>CURRENT OPERATION</span><b>{operation}</b></div><span className={"operation-pill "+(running?"is-running":"")}>{running?"IN PROGRESS":"IDLE"}</span></div>
+        {error&&<div className="error-banner"><b>EXECUTION INTERRUPTED</b><span>{error}</span></div>}
+        <section className="runner-panel"><div className="panel-heading"><div><small>01 / FIXED TASK SET</small><h2>Scenario manifest</h2></div><span>12 SCENARIOS <i/> 3 DOMAINS</span></div><div className="scenario-table"><div className="scenario-head"><span>KEY</span><span>SCENARIO</span><span>DOMAIN</span><span>STATUS</span></div>{scenarios.map(([key,title,domain])=>{const state=states[key]??"pending";return <div className={"scenario-row state-"+state} key={key}><code>{key}</code><b>{title}</b><span>{domain}</span><em>{state==="pending"?"PENDING":state.toUpperCase()}</em></div>;})}</div></section>
+        <section className="runner-panel"><div className="panel-heading"><div><small>02 / LIVE TELEMETRY</small><h2>Execution trace</h2></div><span>{String(events.length).padStart(2,"0")} EVENTS <i/> {running?"STREAMING":"CAPTURED"}</span></div><div className="event-log" ref={logRef}>{events.length===0?<div className="log-empty"><span>⌁</span><div><b>No execution events yet</b><small>Initialization, task transitions and evaluator responses will appear here.</small></div></div>:events.map(e=><div className={"log-row log-"+e.level} key={e.id}><code>{String(e.id).padStart(3,"0")}</code><time>{e.time}</time><i/><span>{e.message}</span></div>)}</div></section>
+        {runs.length>0&&<section className="runner-panel"><div className="panel-heading"><div><small>03 / DATABASE OUTPUT</small><h2>Persisted run results</h2></div><span>{runs.length} RECORDS</span></div><div className="results-table"><div className="results-head"><span>MODE</span><span>RUN ID</span><span>COMPLETED</span><span>FAILED</span><span>SCORE</span><span>STATUS</span></div>{runs.map(r=><div className="results-row" key={r.id}><b className={r.mode==="baseline"?"blue-text":"purple-text"}>{r.mode.toUpperCase()}</b><code title={r.id}>{r.id}</code><span>{r.completed}/12</span><span>{r.failed}</span><strong>{r.score===null?"—":r.score.toFixed(1)}</strong><em>{r.status}</em></div>)}</div></section>}
       </section>
     </div>
-    <footer className="workbench-footer"><span>SPECProof / EXECUTION DESK 001</span><span>ONE TASK · ONE TRACE · ONE RESULT</span><a href="/">RETURN TO OVERVIEW ↗</a></footer>
+    <footer className="runner-footer"><span>SPECProof / EVALUATION LAB</span><span>ONE TASK · ONE TRACE · ONE RESULT</span><a href="/">RETURN TO OVERVIEW ↗</a></footer>
   </main>;
 }
