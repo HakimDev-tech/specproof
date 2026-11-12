@@ -1,1 +1,99 @@
-import{listSuites}from"@/modules/benchmark/application/suites";export default async function Home(){const suites=await listSuites();return <main className="min-h-screen px-6 py-8 md:px-12"><header className="mx-auto flex max-w-7xl items-center justify-between"><div><div className="text-xl font-semibold">SPECProof</div><div className="text-xs muted">AGENT RELIABILITY LAB</div></div><span className="rounded-full border border-violet-400/30 px-3 py-1 text-xs text-violet-200">Research preview · v0.1</span></header><section className="mx-auto max-w-7xl py-24"><div className="eyebrow">Evidence-based evaluation</div><h1 className="mt-5 max-w-4xl text-5xl font-semibold leading-tight md:text-7xl">Can your AI agent <span className="text-violet-300">prove</span> what it knows?</h1><p className="mt-6 max-w-2xl text-lg leading-8 muted">Reproducible benchmarks for technical research agents. Test API accuracy, documentation freshness, version compatibility and evidence quality.</p><a href="#suite" className="mt-9 inline-block rounded-xl bg-violet-500 px-5 py-3 font-medium">Explore benchmark suite ↓</a></section><section className="mx-auto grid max-w-7xl gap-4 md:grid-cols-3">{[{v:"12",l:"Curated scenarios"},{v:"6",l:"Scoring dimensions"},{v:"2",l:"Agent configurations"}].map(x=><div className="panel p-6" key={x.l}><div className="text-4xl font-semibold">{x.v}</div><div className="mt-2 muted">{x.l}</div></div>)}</section><section id="suite" className="mx-auto max-w-7xl py-20"><div className="eyebrow">Benchmark catalogue</div><h2 className="mt-3 text-3xl font-semibold">Initial evaluation suite</h2><div className="mt-8 grid gap-4 md:grid-cols-3">{suites.map(s=><article className="panel p-6" key={s.id}><div className="text-sm text-violet-200">{s.category}</div><h3 className="mt-3 text-xl font-semibold">{s.name}</h3><p className="mt-2 text-sm muted">{s.description}</p><div className="mt-5 text-xs muted">{s.taskCount} scenarios · {s.version}</div></article>)}</div></section></main>}
+import { listSuites } from "@/modules/benchmark/application/suites";
+
+const metrics = [
+  { value: "12", label: "Scenarios", note: "Three technical domains" },
+  { value: "06", label: "Evaluation axes", note: "Weighted scoring model" },
+  { value: "02", label: "Execution modes", note: "Knowledge / evidence" },
+];
+
+export default async function Home() {
+  const suites = await listSuites();
+
+  return (
+    <main className="publication-shell">
+      <header className="masthead">
+        <a href="/" className="wordmark" aria-label="SPECProof home">SPEC<span>/</span>PROOF</a>
+        <div className="masthead-meta">
+          <span>Independent benchmark series</span>
+          <span>Vol. 01 / 2026</span>
+        </div>
+        <a href="#suite" className="masthead-link">Explore the index <span aria-hidden="true">↘</span></a>
+      </header>
+
+      <div className="publication-grid">
+        <aside className="side-index" aria-label="Publication index">
+          <div className="side-index-stamp">SP<br />01</div>
+          <div className="side-index-rule" />
+          <p>RESEARCH<br />SYSTEMS<br />RELIABILITY</p>
+          <span className="vertical-caption">A FIELD GUIDE TO AGENT EVALUATION</span>
+        </aside>
+
+        <div className="main-column">
+          <section className="cover-story">
+            <div className="cover-kicker">
+              <span className="issue-number">01—12</span>
+              <span>Evidence-based evaluation / Developer agents</span>
+            </div>
+            <h1>Can an agent<br />stand behind<br /><em>its answer?</em></h1>
+            <div className="cover-bottom">
+              <p className="cover-deck">
+                A benchmark for technical answers that must survive contact with real documentation,
+                changing APIs and version constraints.
+              </p>
+              <a className="text-link" href="#suite">Read the benchmark <span aria-hidden="true">↘</span></a>
+            </div>
+            <div className="cover-registration" aria-hidden="true">FIELD<br />NOTES<br /><strong>2026</strong></div>
+          </section>
+
+          <section className="metrics-strip" aria-label="Benchmark at a glance">
+            {metrics.map((item, index) => (
+              <div className="metric" key={item.label}>
+                <span className="metric-index">0{index + 1}</span>
+                <strong>{item.value}</strong>
+                <div>
+                  <span className="metric-label">{item.label}</span>
+                  <span className="metric-note">{item.note}</span>
+                </div>
+              </div>
+            ))}
+          </section>
+
+          <section className="suite-section" id="suite">
+            <div className="section-heading">
+              <div>
+                <div className="section-kicker">The benchmark / Catalogue</div>
+                <h2>What gets<br /><em>put to the test.</em></h2>
+              </div>
+              <p className="section-aside">A fixed set of tasks. A common scoring model. Two execution conditions.</p>
+            </div>
+
+            <div className="suite-list">
+              {suites.map((suite, index) => (
+                <article className="suite-row" key={suite.id}>
+                  <span className="suite-number">0{index + 1}</span>
+                  <div className="suite-copy">
+                    <span className="suite-category">{suite.category}</span>
+                    <h3>{suite.name}</h3>
+                    <p>{suite.description}</p>
+                  </div>
+                  <div className="suite-count">
+                    <strong>{String(suite.taskCount).padStart(2, "0")}</strong>
+                    <span>tasks</span>
+                  </div>
+                  <span className="suite-version">v{suite.version}</span>
+                  <span className="suite-arrow" aria-hidden="true">↗</span>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <footer className="publication-footer">
+            <span>SPECProof / Research instrument 001</span>
+            <span>Accuracy is a claim. Evidence is the test.</span>
+            <a href="#top" onClick={(event) => { event.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); }}>Back to top ↑</a>
+          </footer>
+        </div>
+      </div>
+    </main>
+  );
+}
